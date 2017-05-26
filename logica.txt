@@ -1,0 +1,68 @@
+// só pra desenhar
+function desenharFlappy()
+{
+	drawImage(flappao, flappy.x, flappy.y, null);
+}
+
+// calcular próxima posição
+function calculaPos()
+{
+	podeIrPraPos();
+	if (podeIr)
+	{
+		irDescendo();
+		canoAndar();
+		if (cano.x < 0)
+			voltaCanos();
+	}
+	else
+	{
+		...
+	}
+}
+
+// verifica se a posição do Flappy é válida
+function podeIrPraPos()
+{
+	seColidiuNoTeto... return false
+	seColidiuNoChao... return false
+	seColidiuNoCanoC... return false
+	seColidiuNoCanoB... return false
+	return true;
+}
+
+// faz o flappy pular
+// apenas faz com que o índice x do irDescendo seja alterado
+function pular()
+{
+	indice = 0;
+}
+
+// faz o Flappy descer cada vez mais
+// baseia-se numa função e num índice(x) da função
+function irDescendo()
+{
+	var x = funcaum(); // usa o índice
+	flappy.y += x;
+	indice++;
+}
+
+// a função que devolve um número representativo do índice
+function funcaum()
+{
+	var aux = -((indice^2)/25) + indice;
+	flappy.y += aux
+}
+
+// quando o cano chega no final, ele volta pro começo
+function voltaCanos()
+{
+	canoC.posX = maximo;
+	canoB.posX = maximo;
+}
+
+function canoAndar()
+{
+	canoC.posX--;
+	canoB.posX--;
+}

@@ -32,10 +32,19 @@ WM_FINISH equ WM_USER+100h ; determina o fim da thread
 IDM_CREATE_THREAD equ 1 
 
 .data 
-xFlappy DWORD -30
 mmm db "Very nice"
 nnn db "Prog"
+
 yFlappy DWORD -10
+xFlappy DWORD -30
+
+yCanoC DWORD 0
+yCanoB DWORD 0
+xCanoC DWORD 500
+xCanoC DWORD 750
+
+indiceProX DWORD 0
+
 char WPARAM 20h
 
 .data?
@@ -249,15 +258,15 @@ TopXY endp
 ; #########################################################################
 
 PushButton proc lpText:DWORD,hParent:DWORD,
-                a:DWORD,b:DWORD,wd:DWORD,ht:DWORD,ID:DWORD
+    a:DWORD,b:DWORD,wd:DWORD,ht:DWORD,ID:DWORD
 
     szText btnClass,"BUTTON"
 
     invoke CreateWindowEx,0,
-            ADDR btnClass,lpText,
-            WS_CHILD or WS_VISIBLE,
-            a,b,wd,ht,hParent,ID,
-            hInstance,NULL
+        ADDR btnClass,lpText,
+        WS_CHILD or WS_VISIBLE,
+        a,b,wd,ht,hParent,ID,
+        hInstance,NULL
 
     ret
 
@@ -267,28 +276,74 @@ PushButton endp
 ;/////////////////////////////////
 ;/////////////////////////////////
 Subir proc 
-    add yFlappy, 10
+    sub indice, 10
     ret
 Subir endp 
 
 ;/////////////////////////////////
 ;/////////////////////////////////
 ;/////////////////////////////////
-Descer proc indice:DWORD
+irDescendo proc
     mov ecx, 10       ; 10 é uma constante para o máximo de pixels que se desce de uma vez só
     mov eax, indice   ; indice varia entre 0 e 1 e indica quanto será decrementado
     mul ecx           ; estou multiplicando os dois(ecx*eax), será guardado em eax o valor(e em ecx se muito grande) por default
     sub yFlappy, eax  ; subtraindo o valor do Y pelo valor de eax
     ret
-Descer endp 
+irDescendo endp 
+
+;/////////////////////////////////
+;/////////////////////////////////
+;/////////////////////////////////
+
+voltaCanos PROTO
+    mov xCanoC, 500
+    mov xCanoB, 500
+voltaCanoC endp
+
+;/////////////////////////////////
+;/////////////////////////////////
+;/////////////////////////////////
+
+;  F    |<
+canoAndar PROTO
+    sub xCanoC, 2
+    sub xCanoB, 2
+canoAndar endp
+
+;/////////////////////////////////
+;/////////////////////////////////
+;/////////////////////////////////
+
+calculaPos PROTO
+
+calculaPos endp
+
+;/////////////////////////////////
+;/////////////////////////////////
+;/////////////////////////////////
+
+podeIrPraPos PROTO
+
+podeIrPraPos endp
+
+;/////////////////////////////////
+;/////////////////////////////////
+;/////////////////////////////////
+
+graficoDeY PROTO
+    mov  eax, 
+graficoDeY endp
+
+;/////////////////////////////////
+;/////////////////////////////////
+;/////////////////////////////////
+
 
 ; ########################################################################
 
 Desenhar_Flappy proc hWin:DWORD, hDC:DWORD
     LOCAL hFImage:DWORD
     LOCAL memDC:DWORD
-    LOCAL var1:DWORD
-    LOCAL var2:DWORD
 
     invoke CreateCompatibleDC,hDC
     mov memDC, eax
@@ -296,21 +351,7 @@ Desenhar_Flappy proc hWin:DWORD, hDC:DWORD
     invoke SelectObject,memDC,hFlappy
     mov hFImage, eax
 
-
-    mov var1, 284 ; recebe metade(onde começa)
-    .while var1 > 0 ;<<  se for menor ou igual a 0
-
-      invoke BitBlt,hDC,10,10,256,128,memDC,xFlappy,yFlappy,SRCCOPY
-      invoke GetTickCount
-      mov var2, eax
-      add var2, 10    ; nominal milliseconds delay
-
-      .while eax < var2
-        invoke GetTickCount
-      .endw
-
-      dec var1 ; decrementa para ir para trás
-    .endw
+    invoke BitBlt,hDC,10,10,256,128,memDC,xFlappy,yFlappy,SRCCOPY
 Desenhar_Flappy endp
 
 ;//////////////////////////////////////////////////////////////////////
@@ -318,15 +359,15 @@ Desenhar_Flappy endp
 ;//////////////////////////////////////////////////////////////////////
 
 ThreadProc PROC USES ecx Param:DWORD 
-        mov  ecx,600000000 
-Loop1: 
+    mov  ecx,600000000 
+    Loop1: 
         add  eax,eax 
         dec  ecx 
         jz   Get_out 
         jmp  Loop1 
-Get_out: ; não tira isso
+    Get_out: ; não tira isso
         invoke PostMessage,hWnd,WM_FINISH,NULL,NULL 
-        ret 
+    ret 
 ThreadProc ENDP
 
 end start

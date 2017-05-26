@@ -31,14 +31,21 @@
         WndProc PROTO :DWORD,:DWORD,:DWORD,:DWORD
         TopXY PROTO   :DWORD,:DWORD
         FillBuffer   PROTO :DWORD,:DWORD,:BYTE
-        Subir   PROTO
-        Descer   PROTO :DWORD
-        Desenhar_Flappy PROTO   :DWORD,:DWORD
         PushButton   PROTO :DWORD,:DWORD,:DWORD,:DWORD,:DWORD,:DWORD,:DWORD
         ThreadProc PROTO :DWORD
 
-        wsprintfA PROTO C :DWORD,:VARARG
-        wsprintf equ <wsprintfA>
+        ; nossas funções
+        desenharFlappy  PROTO :DWORD,:DWORD
+        Subir           PROTO
+        irDescendo      PROTO
+        voltaCanos      PROTO
+        canoAndar       PROTO
+        calculaPos      PROTO
+        podeIrPraPos    PROTO
+        graficoDeY      PROTO
+
+        ;wsprintfA PROTO C :DWORD, :DWORD, :VARARG
+        ;wsprintf equ <wsprintfA>
 
       ;=============
       ; Local macros
