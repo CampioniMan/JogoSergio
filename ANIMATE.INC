@@ -44,6 +44,11 @@
         podeIrPraPos    PROTO
         graficoDeY      PROTO
 
+        ; Funções para auxílio de cálculo
+        quadradoDe PROTO :DWORD
+        multiplicar PROTO :DWORD, :DWORD
+        dividir PROTO :DWORD, :DWORD
+
         ;wsprintfA PROTO C :DWORD, :DWORD, :VARARG
         ;wsprintf equ <wsprintfA>
 
@@ -76,6 +81,10 @@
         hBmp          dd 0
         hFlappy       dd 0
         szDisplayName db "Flappy Bird",0
+        pos           POINT <>
+        canoC         POINT <>
+        canoB         POINT <>
+        indiceProX    dd 1
         
 
 ; ########################### Inserted modules ############################

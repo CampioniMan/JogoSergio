@@ -13,14 +13,14 @@ if errorlevel 1 goto errasm
 
 if not exist rsrc.obj goto nores
 
-c:\masm32\bin\Link /SUBSYSTEM:WINDOWS /OPT:NOREF %1.obj rsrc.obj
+c:\masm32\bin\Link /SUBSYSTEM:WINDOWS /OPT:NOREF /ENTRY:start %1.obj rsrc.obj
 if errorlevel 1 goto errlink
 
 dir %1.*
 goto TheEnd
 
 :nores
-c:\masm32\bin\Link /SUBSYSTEM:WINDOWS /OPT:NOREF %1.obj
+c:\masm32\bin\Link /SUBSYSTEM:WINDOWS /OPT:NOREF /ENTRY:start %1.obj
 if errorlevel 1 goto errlink
 dir %1.*
 goto TheEnd
