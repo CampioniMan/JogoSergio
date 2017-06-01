@@ -28,14 +28,14 @@ include animate.inc   ; local includes for this file
 FLAPPY_ALTURA DWORD 30
 FLAPPY_LARGURA DWORD 59
 FLAPPY_BITMAP equ 200
+FUNDO equ 110
 WM_FINISH equ WM_USER+100h ; determina o fim da thread
 IDM_CREATE_THREAD equ 1 
 
-.data 
-mmm db "Very nice"
-nnn db "Prog"
-
+.data
 char WPARAM 20h
+n db "ti",0
+m db "ert",0
 
 .data?
 ThreadID DWORD ?
@@ -52,6 +52,9 @@ start:
     ; loading bmp do sarinho
     invoke  LoadBitmap, hInstance, FLAPPY_BITMAP
     mov     hFlappy, eax
+
+    invoke  LoadBitmap, hInstance, FUNDO
+    mov     hFundo, eax
 
     invoke GetCommandLine
     mov CommandLine, eax
@@ -106,8 +109,8 @@ WinMain proc hInst     :DWORD,
     ; Centre window at following size
     ;================================
 
-    mov Wwd, 303 ; 166 + 26
-    mov Wht, 359 ; 68 + 82
+    mov Wwd, 500 ; 166 + 26
+    mov Wht, 500 ; 68 + 82
 
     invoke GetSystemMetrics,SM_CXSCREEN
     invoke TopXY,Wwd,eax
@@ -136,12 +139,14 @@ WinMain proc hInst     :DWORD,
       ; Loop until PostQuitMessage is sent
       ;===================================
 
-    .WHILE TRUE
-        INVOKE GetMessage, ADDR msg,NULL,0,0
-        .BREAK .IF (!eax)
-        INVOKE TranslateMessage, ADDR msg
-        INVOKE DispatchMessage, ADDR msg
-    .ENDW
+    StartLoop:
+      invoke GetMessage,ADDR msg,NULL,0,0
+      cmp eax, 0
+      je ExitLoop
+      invoke TranslateMessage, ADDR msg
+      invoke DispatchMessage,  ADDR msg
+      jmp StartLoop
+    ExitLoop:
 
     return msg.wParam
 WinMain endp
@@ -149,9 +154,9 @@ WinMain endp
 ; #########################################################################
 
 WndProc proc hWin   :DWORD,
-             uMsg   :DWORD,
-             wParam :DWORD,
-             lParam :DWORD
+            uMsg   :DWORD,
+            wParam :DWORD,
+            lParam :DWORD
 
     LOCAL var    :DWORD
     LOCAL caW    :DWORD
@@ -161,6 +166,8 @@ WndProc proc hWin   :DWORD,
     LOCAL Ps     :PAINTSTRUCT
     LOCAL buffer1[128]:BYTE  ; these are two spare buffers
     LOCAL buffer2[128]:BYTE  ; for text manipulation etc..
+    mov ebx, hWin
+    mov hWin2, ebx
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -170,7 +177,9 @@ WndProc proc hWin   :DWORD,
         .if wParam == 500
             invoke GetDC,hWin
             mov hDC, eax
-            invoke desenharFlappy, hWin, hDC
+            invoke desenharFlappy, hDC
+
+            call irDescendo
 
             invoke ReleaseDC,hWin,hDC
             return 0
@@ -178,17 +187,7 @@ WndProc proc hWin   :DWORD,
             invoke PostQuitMessage,NULL
             return 0
         .endif
-        .if lParam == 0
-            .if ax == IDM_CREATE_THREAD
-                mov  eax, OFFSET ThreadProc
-                invoke CreateThread, NULL, NULL, ThreadProc, eax, 0, ADDR ThreadID
-                invoke CloseHandle, eax
-            .else
-                invoke DestroyWindow, hWnd
-            .endif
-        .endif
-    .ELSEIF uMsg==WM_FINISH
-        invoke MessageBox,NULL,addr mmm, addr nnn,MB_OK
+        return 0
     .endif
 
     ;======== menu commands ========
@@ -203,7 +202,7 @@ WndProc proc hWin   :DWORD,
         invoke PushButton, ADDR RunIt2, hWin, 130, 300, 100, 25, 550
 
         mov pos.x, -10
-        mov pos.y, -30
+        mov pos.y, -100
         mov canoC.x, 200
         mov canoC.y, 0
         mov canoB.x, 200
@@ -212,24 +211,37 @@ WndProc proc hWin   :DWORD,
     .elseif uMsg == WM_CHAR
         push wParam
         pop  char
-        .if char == 97 ; se apertou "a"
-            invoke irDescendo
-        .elseif char == 98 ; se apertou "b"
-            mov ax, IDM_CREATE_THREAD
+        .if char == 97 || char == 65 ; se apertou "a" ou  "A"
+            mov indiceProX, 1
+        .elseif char == 98 || char == 66 ; se apertou "b" ou "B"
+            mov    eax, OFFSET ThreadProc
+            invoke CreateEvent, NULL, FALSE, FALSE, NULL
+            mov    hEventStart, eax
+            mov    eax, OFFSET ThreadProc
+            invoke CreateThread, NULL, NULL, ThreadProc, eax, 0, ADDR ThreadID
+            invoke CloseHandle, eax
+            mov    hThread,eax
         .endif
-
-    .elseif uMsg == WM_PAINT
-        invoke BeginPaint,hWin,ADDR Ps
-        mov hDC, eax
-        invoke  DeleteDC, hDC
-        invoke EndPaint,hWin,ADDR Ps
-        return 0
-
     .elseif uMsg == WM_CLOSE
 
     .elseif uMsg == WM_DESTROY
+        mov  EventStop,TRUE
         invoke PostQuitMessage,NULL
-        return 0 
+        return 0
+
+    .elseif uMsg==WM_FINISH
+        call irDescendo
+        invoke InvalidateRect, hWnd, NULL, TRUE
+    .endif
+
+    .if uMsg == WM_PAINT
+        invoke BeginPaint, hWin, ADDR Ps
+        mov hDC, eax
+
+        invoke desenharFlappy, hDC
+
+        invoke EndPaint, hWin, ADDR Ps
+        return 0
     .endif
 
     invoke DefWindowProc,hWin,uMsg,wParam,lParam
@@ -264,25 +276,6 @@ PushButton proc lpText:DWORD,hParent:DWORD,
 
     ret
 PushButton endp
-
-;/////////////////////////////////
-;/////////////////////////////////
-;/////////////////////////////////
-
-Subir proc 
-    sub indiceProX, 10
-    ret
-Subir endp 
-
-;/////////////////////////////////
-;/////////////////////////////////
-;/////////////////////////////////
-
-irDescendo proc
-    call graficoDeY
-    sub pos.y, eax      ; subtraindo o valor do Y pelo valor de eax
-    ret
-irDescendo endp 
 
 ;/////////////////////////////////
 ;/////////////////////////////////
@@ -325,58 +318,41 @@ podeIrPraPos endp
 ;/////////////////////////////////
 ;/////////////////////////////////
 
-graficoDeY proc
-    LOCAL aux:DWORD
 
-    ; -((indiceProX^2)/25) + indiceProX, fórmula para o cálculo
-    invoke quadradoDe, indiceProX   ; (indiceProX^2)
+subir proc
+    mov indiceProX, 1
+subir endp
+
+;/////////////////////////////////
+;/////////////////////////////////
+;/////////////////////////////////    
+
+irDescendo proc
+    call graficoDeY     ; EAX agora tem o valor de quanto descer ou subir
+    add pos.y, eax      ; adicionando o valor do Y(-/+) pelo valor de EAX
+    add indiceProX, 1
+irDescendo endp
+
+;/////////////////////////////////
+;/////////////////////////////////
+;/////////////////////////////////
+
+graficoDeY proc
+    LOCAL aux:DWORD ; variável local criada
+
+    ; -((indiceProX^2)/25) + indiceProX, fórmula para o cálculo -((x^2)/15) + x*2
+    quadradoDe indiceProX   ; (indiceProX^2)
     mov aux, eax
-    invoke dividir, aux, 25         ; /25
-    mov aux, edx
-    invoke multiplicar, aux, -1     ; -
+    dividir aux, 25         ; /25
+    mov aux, eax
+    multiplicar aux, -1     ; -
     mov aux, eax
     mov edx, indiceProX
-    add aux, edx                    ; + indiceProX
+    add aux, edx            ; + indiceProX
 
-    ret
-    ;// temos o resultado em aux
+    return aux
+    ;// temos o resultado em EAX
 graficoDeY endp
-
-;/////////////////////////////////
-;/////////////////////////////////
-;/////////////////////////////////
-
-;/* Coloca em EDX o valor multiplicado */
-;/* Altera EAX e EBX também            */
-dividir proc primeiro:DWORD, segundo:DWORD
-    mov eax, primeiro
-    mov ebx, segundo
-    xor edx, edx       ;coloca 0 no EDX para não haver erros
-    div ebx
-dividir endp
-
-;/////////////////////////////////
-;/////////////////////////////////
-;/////////////////////////////////
-
-;/* Coloca em EAX o valor multiplicado */
-;/* Altera ECX também                  */
-multiplicar proc primeiro:DWORD, segundo:DWORD
-    mov ecx, primeiro
-    mov eax, segundo
-    mul ecx           ; estou multiplicando os dois(ecx*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
-multiplicar endp
-
-;/////////////////////////////////
-;/////////////////////////////////
-;/////////////////////////////////
-
-;/* Coloca em EAX o valor do quadrado */
-quadradoDe proc base:DWORD
-    mov eax, base   ; colocando o valor de 'base' em EAX
-    mul eax         ; estou multiplicando o valor por si mesmo(EAX*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
-quadradoDe endp
-
 ;/////////////////////////////////
 ;/////////////////////////////////
 ;/////////////////////////////////
@@ -384,17 +360,20 @@ quadradoDe endp
 
 ; ########################################################################
 
-desenharFlappy proc hWin:DWORD, hDC:DWORD
+desenharFlappy proc hDC:DWORD
     LOCAL hFImage:DWORD
     LOCAL memDC:DWORD
 
     invoke CreateCompatibleDC,hDC
     mov memDC, eax
-    
+
+    invoke SelectObject,memDC,hFundo
+    mov hFImage, eax
+    invoke BitBlt,hDC,0,0,500,500,memDC,0,0,SRCCOPY
+
     invoke SelectObject,memDC,hFlappy
     mov hFImage, eax
-
-    invoke BitBlt,hDC,10,10,256,128,memDC,pos.x,pos.y,SRCCOPY
+    invoke BitBlt,hDC,0,0,500,500,memDC,pos.x,pos.y,SRCCOPY
 
     invoke SelectObject,hDC,hFImage
     invoke DeleteDC,memDC
@@ -405,16 +384,21 @@ desenharFlappy endp
 ;//////////////////             THREAD           //////////////////////
 ;//////////////////////////////////////////////////////////////////////
 
-ThreadProc PROC USES ecx Param:DWORD 
-    mov  ecx,600000000 
-    Loop1: 
-        add  eax,eax 
-        dec  ecx 
-        jz   Get_out 
-        jmp  Loop1 
-    Get_out: ; não tira isso
-        invoke PostMessage,hWnd,WM_FINISH,NULL,NULL 
-    ret 
+ThreadProc PROC USES ecx Param:DWORD
+
+  invoke WaitForSingleObject,hEventStart,100 ;INFINITE
+
+    .IF eax == WAIT_TIMEOUT 
+               invoke PostMessage, hWnd, WM_FINISH, NULL, NULL
+               jmp   ThreadProc     
+    .ELSEIF eax == WAIT_OBJECT_0    
+             invoke PostMessage, hWnd, WM_FINISH, NULL, NULL
+              jmp   ThreadProc
+        .ENDIF
+        
+        jmp   ThreadProc
+        
+        ret
 ThreadProc ENDP
 
 end start
