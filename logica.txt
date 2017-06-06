@@ -24,7 +24,6 @@ function calculaPos()
 // verifica se a posição do Flappy é válida
 function podeIrPraPos()
 {
-	seColidiuNoTeto... return false
 	seColidiuNoChao... return false
 	seColidiuNoCanoC... return false
 	seColidiuNoCanoB... return false
@@ -35,7 +34,7 @@ function podeIrPraPos()
 // apenas faz com que o índice x do irDescendo seja alterado
 function pular()
 {
-	indice = 0;
+	indice = 15;
 }
 
 // faz o Flappy descer cada vez mais

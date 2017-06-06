@@ -24,18 +24,9 @@ include animate.inc   ; local includes for this file
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ; Algumas constantes foram criadas para indicar as dimensões da imagem
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.const
-FLAPPY_ALTURA DWORD 30
-FLAPPY_LARGURA DWORD 59
-FLAPPY_BITMAP equ 200
-FUNDO equ 110
-WM_FINISH equ WM_USER+100h ; determina o fim da thread
-IDM_CREATE_THREAD equ 1 
 
 .data
 char WPARAM 20h
-n db "ti",0
-m db "ert",0
 
 .data?
 ThreadID DWORD ?
@@ -53,13 +44,19 @@ start:
     invoke  LoadBitmap, hInstance, FLAPPY_BITMAP
     mov     hFlappy, eax
 
-    invoke  LoadBitmap, hInstance, FUNDO
+    invoke  LoadBitmap, hInstance, FUNDO_BITMAP
     mov     hFundo, eax
+
+    invoke  LoadBitmap, hInstance, CANOB_BITMAP
+    mov     hCanoB, eax
+
+    invoke  LoadBitmap, hInstance, CANOC_BITMAP
+    mov     hCanoC, eax
 
     invoke GetCommandLine
     mov CommandLine, eax
 
-    invoke WinMain,hInstance,NULL,CommandLine,SW_SHOWDEFAULT
+    invoke WinMain, hInstance, NULL, CommandLine, SW_SHOWDEFAULT
     invoke ExitProcess,eax
 
 ; #########################################################################
@@ -109,8 +106,8 @@ WinMain proc hInst     :DWORD,
     ; Centre window at following size
     ;================================
 
-    mov Wwd, 500 ; 166 + 26
-    mov Wht, 500 ; 68 + 82
+    mov Wwd, 506 ; 166 + 26
+    mov Wht, 478 ; 68 + 82
 
     invoke GetSystemMetrics,SM_CXSCREEN
     invoke TopXY,Wwd,eax
@@ -169,71 +166,43 @@ WndProc proc hWin   :DWORD,
     mov ebx, hWin
     mov hWin2, ebx
 
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ; Verificações para ver qual botão foi pressionado e seus respectivos métodos
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    .IF uMsg == WM_COMMAND
-        .if wParam == 500
-            invoke GetDC,hWin
-            mov hDC, eax
-            invoke desenharFlappy, hDC
+    ;======== comandos do menu ========
 
-            call irDescendo
-
-            invoke ReleaseDC,hWin,hDC
-            return 0
-        .elseif wParam == 550
-            invoke PostQuitMessage,NULL
-            return 0
-        .endif
-        return 0
-    .endif
-
-    ;======== menu commands ========
+    ; inicializando variáveis para começar o jogo
+    ; pela 1ª vez
     .if uMsg == WM_CREATE
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ; Criando o segundo botão com um texto diferente e "ID" diferente
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        szText RunIt, "Jogar"
-        szText RunIt2, "Sair"
-        invoke PushButton, ADDR RunIt, hWin, 20, 300, 100, 25, 500
-        invoke PushButton, ADDR RunIt2, hWin, 130, 300, 100, 25, 550
+        call recomecar
 
-        mov pos.x, -10
-        mov pos.y, -100
-        mov canoC.x, 200
-        mov canoC.y, 0
-        mov canoB.x, 200
-        mov canoB.y, 300
-
+    ; método para leitura de teclado
     .elseif uMsg == WM_CHAR
         push wParam
         pop  char
         .if char == 97 || char == 65 ; se apertou "a" ou  "A"
-            mov indiceProX, 1
+            call subir
+        .elseif char == 99 || char == 67 ; se apertou "c" ou  "C"
+            .if perdeu == 1
+                call recomecar
+            .endif
         .elseif char == 98 || char == 66 ; se apertou "b" ou "B"
-            mov    eax, OFFSET ThreadProc
-            invoke CreateEvent, NULL, FALSE, FALSE, NULL
-            mov    hEventStart, eax
-            mov    eax, OFFSET ThreadProc
-            invoke CreateThread, NULL, NULL, ThreadProc, eax, 0, ADDR ThreadID
-            invoke CloseHandle, eax
-            mov    hThread,eax
+            .if inicio == 1
+                mov inicio, 0
+                CRIAR_THREAD ThreadProc, ThreadID, hThread
+            .endif
         .endif
-    .elseif uMsg == WM_CLOSE
 
+    ; quando fecha a janela
     .elseif uMsg == WM_DESTROY
         mov  EventStop,TRUE
         invoke PostQuitMessage,NULL
         return 0
 
+    ; método da Thread
     .elseif uMsg==WM_FINISH
-        call irDescendo
+        call calculaPos
         invoke InvalidateRect, hWnd, NULL, TRUE
     .endif
 
+    ; Método Paint
     .if uMsg == WM_PAINT
         invoke BeginPaint, hWin, ADDR Ps
         mov hDC, eax
@@ -253,37 +222,28 @@ WndProc endp
 
 TopXY proc wDim:DWORD, sDim:DWORD
 
-    shr sDim, 1      ; divide screen dimension by 2
-    shr wDim, 1      ; divide window dimension by 2
-    mov eax, wDim    ; copy window dimension into eax
-    sub sDim, eax    ; sub half win dimension from half screen dimension
+    shr sDim, 1
+    shr wDim, 1
+    mov eax, wDim
+    sub sDim, eax
 
     return sDim
 TopXY endp
 
 ; #########################################################################
 
-PushButton proc lpText:DWORD,hParent:DWORD,
-    a:DWORD,b:DWORD,wd:DWORD,ht:DWORD,ID:DWORD
-
-    szText btnClass,"BUTTON"
-
-    invoke CreateWindowEx,0,
-        ADDR btnClass,lpText,
-        WS_CHILD or WS_VISIBLE,
-        a,b,wd,ht,hParent,ID,
-        hInstance,NULL
-
-    ret
-PushButton endp
-
 ;/////////////////////////////////
 ;/////////////////////////////////
 ;/////////////////////////////////
 
 voltaCanos proc
-    mov canoC.x, 500
-    mov canoB.x, 500
+    mov canoCx, -506
+    mov canoBx, -506
+    inc pontos
+    mov  eax,100     ;get random 0 to 99
+    call Random32 ;
+    call Randomize
+    mov pos.x, eax
     ret
 voltaCanos ENDP
 
@@ -293,8 +253,8 @@ voltaCanos ENDP
 
 ;  F    |<
 canoAndar proc
-    sub canoC.x, 2
-    sub canoB.x, 2
+    add canoCx, 4
+    add canoBx, 4
     ret
 canoAndar endp
 
@@ -303,24 +263,92 @@ canoAndar endp
 ;/////////////////////////////////
 
 calculaPos proc
-
+    .if perdeu == 0                ; se não perdeu
+        call podeIrPraPos          ; verifica se pode ir pra próxima posição
+        .if eax == 1               ; se não colidiu no canto
+            call irDescendo        ; descer o flappy
+            call canoAndar         ; andamos o cano para sensação de movimento
+            mov eax, CANO_LARGURA  ; movemos a constante para o eax para utilizar no IF
+            .if canoCx > eax       ; se o cano chegou no final
+                call voltaCanos    ; voltamos ele com a aleatoriedade
+            .endif
+        .else                      ; se colidiu no canto (eax == 0)
+            mov perdeu, 1          ; coloca 1 no perdeu (simbolizar)
+            mov ExitCode, 1        ; coloca 1 no ExitCode (simbolizar)
+        .endif
+    .else                          ; perdeu (perdeu == 1)
+    .endif
 calculaPos endp
 
 ;/////////////////////////////////
 ;/////////////////////////////////
 ;/////////////////////////////////
+;(((p.PosY <= ob.AlturaMax || p.PosY+p.Altura >= canvas.height-ob.AlturaMin) && 
+;(p.PosX-p.Largura+25 <= canvas.width-ob.obPosX && p.PosX+p.Largura >= canvas.width-ob.obPosX)) || 
+;(p.PosY+p.Altura >= canvas.height))
+podeIrPraPos proc; USES eax edx ecx ebx
+    xor eax, eax
+    xor ebx, ebx
+    xor ecx, ecx
+    xor edx, edx
 
-podeIrPraPos proc
+    mov eax, posy          ; cálculo para o primeiro if
+    sub eax, FLAPPY_ALTURA
 
+    ; se caiu no chão
+    .if (SDWORD ptr eax < -445)
+        return 0
+    .endif
+
+
+    mov eax, posx           ;     ||
+    sub eax, FLAPPY_LARGURA ;     -
+                            ;     || canoBx >= posx + largura
+
+    mov edx, posx           ;     ||
+    add edx, CANO_LARGURA   ;      -
+                            ;     || canoBx <= posx - canoLarg
+
+    mov ebx, canoCy         ;     ||  posy <= canoCy - CANO_ALTURA
+    sub ebx, CANO_ALTURA    ;     -^
+                            ;     ||
+
+    mov ecx, canoBy         ;     ||  posy >= canoBy + FLAPPY_ALTURA
+    add ecx, FLAPPY_ALTURA  ;     -\/
+                            ;     ||
+
+    ; se está entre os canos no eixo X   &&  não está entre os canos no eixo Y
+    .if (canoBx <= edx && canoBx >= eax) && !(posy >= ecx && posy <= ebx)
+        return 0
+    .endif
+
+    ; se não está entre os canos no eixo X   &&  está entre os canos no eixo Y
+    ;.if !(canoBx <= edx && canoBx >= eax) && (posy >= ecx && posy <= ebx)
+    ;    mov vai, 1
+    ;    return 0
+    ;.endif
+
+    ; se não está entre os canos no eixo X   &&  não está entre os canos no eixo Y
+    .if !(canoBx <= edx && canoBx >= eax) && !(posy >= ecx && posy <= ebx)
+        return 1
+    .endif
+
+    ; se está entre os canos no eixo X   &&  está entre os canos no eixo Y
+    .if (canoBx <= edx && canoBx >= eax) && (posy >= ecx && posy <= ebx)
+        return 1
+    .endif
+
+    return 1
 podeIrPraPos endp
 
 ;/////////////////////////////////
 ;/////////////////////////////////
 ;/////////////////////////////////
 
-
 subir proc
-    mov indiceProX, 1
+    .if posy < 0 ; para não sair da tela
+        mov indiceProX, 15
+    .endif
 subir endp
 
 ;/////////////////////////////////
@@ -328,9 +356,11 @@ subir endp
 ;/////////////////////////////////    
 
 irDescendo proc
-    call graficoDeY     ; EAX agora tem o valor de quanto descer ou subir
-    add pos.y, eax      ; adicionando o valor do Y(-/+) pelo valor de EAX
-    add indiceProX, 1
+    call graficoDeY       ; EAX agora tem o valor de quanto descer ou subir
+    .if posy > -500
+        add posy, SDWORD ptr eax    ; adicionando o valor do Y(-/+) pelo valor de EAX
+    .endif
+    add indiceProX, 1     ; andando com o índice para a próxima posição da função quadrática
 irDescendo endp
 
 ;/////////////////////////////////
@@ -338,42 +368,79 @@ irDescendo endp
 ;/////////////////////////////////
 
 graficoDeY proc
-    LOCAL aux:DWORD ; variável local criada
+    LOCAL aux:SDWORD ; variável local criada
 
     ; -((indiceProX^2)/25) + indiceProX, fórmula para o cálculo -((x^2)/15) + x*2
-    quadradoDe indiceProX   ; (indiceProX^2)
-    mov aux, eax
-    dividir aux, 25         ; /25
-    mov aux, eax
-    multiplicar aux, -1     ; -
-    mov aux, eax
+    quadradoDe indiceProX
+    mov aux, SDWORD ptr eax ; (indiceProX^2)
+    dividir aux, 25
+    mov aux, SDWORD ptr eax ; /25
+    multiplicar aux, -1
+    mov aux, SDWORD ptr eax ; -
     mov edx, indiceProX
-    add aux, edx            ; + indiceProX
+    add aux, SDWORD ptr edx ; + indiceProX
 
     return aux
     ;// temos o resultado em EAX
 graficoDeY endp
+
 ;/////////////////////////////////
 ;/////////////////////////////////
 ;/////////////////////////////////
 
+recomecar proc
+    mov posx, -10
+    mov posy, -100
+    mov canoCx, -300
+    mov canoBx, -300
+    mov canoCy, 200
+    mov canoBy, -350
+
+    mov indiceProX, 30
+
+    mov perdeu, 0
+recomecar endp
+
+;/////////////////////////////////
+;/////////////////////////////////
+;/////////////////////////////////
 
 ; ########################################################################
 
 desenharFlappy proc hDC:DWORD
     LOCAL hFImage:DWORD
     LOCAL memDC:DWORD
+    LOCAL hfont:HFONT
 
     invoke CreateCompatibleDC,hDC
     mov memDC, eax
 
     invoke SelectObject,memDC,hFundo
     mov hFImage, eax
-    invoke BitBlt,hDC,0,0,500,500,memDC,0,0,SRCCOPY
+    invoke BitBlt,hDC,0,0,500,478,memDC,0,0,SRCCOPY
 
-    invoke SelectObject,memDC,hFlappy
-    mov hFImage, eax
-    invoke BitBlt,hDC,0,0,500,500,memDC,pos.x,pos.y,SRCCOPY
+    .if perdeu == 1
+        ESCREVE_TEXTO FontName, hDC, hfont, textoPerdeu, 0, 130
+        ESCREVE_TEXTO FontName, hDC, hfont, textoPerdeu2, 0, 160
+        ESCREVE_TEXTO FontName, hDC, hfont, textoPerdeu3, 50, 210
+    .else
+        invoke SelectObject,memDC,hFlappy
+        mov hFImage, eax
+        invoke BitBlt,hDC,0,0,500,478,memDC,posx,posy,SRCCOPY
+
+        invoke SelectObject,memDC,hCanoB
+        mov hFImage, eax
+        invoke BitBlt,hDC,0,0,500,478,memDC,canoBx,canoBy,SRCCOPY
+
+        invoke SelectObject,memDC,hCanoC
+        mov hFImage, eax
+        invoke BitBlt,hDC,0,0,500,478,memDC,canoCx,canoCy,SRCCOPY
+    .endif
+
+    .if inicio == 1
+        ESCREVE_TEXTO FontName, hDC, hfont, textoInicio, 0, 130
+        ESCREVE_TEXTO FontName, hDC, hfont, textoInicio2, 0, 160
+    .endif
 
     invoke SelectObject,hDC,hFImage
     invoke DeleteDC,memDC
@@ -386,19 +453,18 @@ desenharFlappy endp
 
 ThreadProc PROC USES ecx Param:DWORD
 
-  invoke WaitForSingleObject,hEventStart,100 ;INFINITE
-
-    .IF eax == WAIT_TIMEOUT 
-               invoke PostMessage, hWnd, WM_FINISH, NULL, NULL
-               jmp   ThreadProc     
-    .ELSEIF eax == WAIT_OBJECT_0    
-             invoke PostMessage, hWnd, WM_FINISH, NULL, NULL
-              jmp   ThreadProc
+    invoke WaitForSingleObject,hEventStart,40 ;INFINITE
+    .if perdeu == 0
+        .IF eax == WAIT_TIMEOUT 
+            invoke PostMessage, hWnd, WM_FINISH, NULL, NULL
+        .ELSEIF eax == WAIT_OBJECT_0    
+            invoke PostMessage, hWnd, WM_FINISH, NULL, NULL
         .ENDIF
+    .endif
+    
+    jmp ThreadProc
         
-        jmp   ThreadProc
-        
-        ret
+    ret
 ThreadProc ENDP
 
 end start
