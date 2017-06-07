@@ -240,10 +240,22 @@ voltaCanos proc
     mov canoCx, -506
     mov canoBx, -506
     inc pontos
-    mov  eax,100     ;get random 0 to 99
-    call Random32 ;
-    call Randomize
-    mov pos.x, eax
+    .if pontos > 9
+        mov pontos, 0
+        inc pontos2
+        .if pontos2 > 9
+            mov pontos2, 0
+            inc pontos3
+            .if pontos3 > 9
+                mov perdeu, 1
+                mov pontos, 9
+                mov pontos2, 9
+                mov pontos3, 9
+            .endif
+        .endif
+    .endif
+    ;aleatorio 10
+    ;mov random, dx
     ret
 voltaCanos ENDP
 
@@ -322,21 +334,15 @@ podeIrPraPos proc; USES eax edx ecx ebx
         return 0
     .endif
 
-    ; se não está entre os canos no eixo X   &&  está entre os canos no eixo Y
-    ;.if !(canoBx <= edx && canoBx >= eax) && (posy >= ecx && posy <= ebx)
-    ;    mov vai, 1
-    ;    return 0
+    ; se não está entre os canos no eixo X   &&  não está entre os canos no eixo Y
+    ;.if !(canoBx <= edx && canoBx >= eax) && !(posy >= ecx && posy <= ebx)
+    ;    return 1
     ;.endif
 
-    ; se não está entre os canos no eixo X   &&  não está entre os canos no eixo Y
-    .if !(canoBx <= edx && canoBx >= eax) && !(posy >= ecx && posy <= ebx)
-        return 1
-    .endif
-
     ; se está entre os canos no eixo X   &&  está entre os canos no eixo Y
-    .if (canoBx <= edx && canoBx >= eax) && (posy >= ecx && posy <= ebx)
-        return 1
-    .endif
+    ;.if (canoBx <= edx && canoBx >= eax) && (posy >= ecx && posy <= ebx)
+    ;    return 1
+    ;.endif
 
     return 1
 podeIrPraPos endp
@@ -359,6 +365,11 @@ irDescendo proc
     call graficoDeY       ; EAX agora tem o valor de quanto descer ou subir
     .if posy > -500
         add posy, SDWORD ptr eax    ; adicionando o valor do Y(-/+) pelo valor de EAX
+        ;mov eax, posx
+        ;mov bx, random
+        ;movzx ecx, bx
+        ;imul ecx           ; estou multiplicando os dois(ecx*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
+        ;mov posx, eax
     .endif
     add indiceProX, 1     ; andando com o índice para a próxima posição da função quadrática
 irDescendo endp
@@ -395,6 +406,9 @@ recomecar proc
     mov canoBx, -300
     mov canoCy, 200
     mov canoBy, -350
+    mov pontos, 0
+    mov pontos2, 0
+    mov pontos3, 0
 
     mov indiceProX, 30
 
@@ -423,6 +437,12 @@ desenharFlappy proc hDC:DWORD
         ESCREVE_TEXTO FontName, hDC, hfont, textoPerdeu, 0, 130
         ESCREVE_TEXTO FontName, hDC, hfont, textoPerdeu2, 0, 160
         ESCREVE_TEXTO FontName, hDC, hfont, textoPerdeu3, 50, 210
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos3, 170, 210
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos2, 190, 210
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos, 210, 210
+    .elseif inicio == 1
+        ESCREVE_TEXTO FontName, hDC, hfont, textoInicio, 0, 130
+        ESCREVE_TEXTO FontName, hDC, hfont, textoInicio2, 0, 160
     .else
         invoke SelectObject,memDC,hFlappy
         mov hFImage, eax
@@ -435,12 +455,12 @@ desenharFlappy proc hDC:DWORD
         invoke SelectObject,memDC,hCanoC
         mov hFImage, eax
         invoke BitBlt,hDC,0,0,500,478,memDC,canoCx,canoCy,SRCCOPY
+
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos3, 0, 0
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos2, 20, 0
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos, 40, 0
     .endif
 
-    .if inicio == 1
-        ESCREVE_TEXTO FontName, hDC, hfont, textoInicio, 0, 130
-        ESCREVE_TEXTO FontName, hDC, hfont, textoInicio2, 0, 160
-    .endif
 
     invoke SelectObject,hDC,hFImage
     invoke DeleteDC,memDC

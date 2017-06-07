@@ -58,10 +58,11 @@ function voltaCanos()
 {
 	canoC.posX = maximo;
 	canoB.posX = maximo;
+	inc pontos
 }
 
 function canoAndar()
 {
-	canoC.posX--;
-	canoB.posX--;
+	canoC.posX++;
+	canoB.posX++;
 }

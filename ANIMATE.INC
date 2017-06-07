@@ -4,16 +4,12 @@
 ;   ~~~~~~~~~~~~~
     ;include C:\masm32\include\masm32.inc
     include c:\MASM32\INCLUDE\windows.inc
-    include C:\masm32\MasmBasic\MasmBasic.inc
     include c:\MASM32\INCLUDE\gdi32.inc
     include c:\MASM32\INCLUDE\user32.inc
     include c:\MASM32\INCLUDE\kernel32.inc
     include c:\MASM32\INCLUDE\Comctl32.inc
     include c:\MASM32\INCLUDE\comdlg32.inc
     include c:\MASM32\INCLUDE\shell32.inc
-    include c:\MASM32\INCLUDE\advapi32.inc        ; CryptAcquireContext, CryptGenRandom, CryptReleaseContext
-
-    include \masm32\MasmBasic\IrvineMb\Irvine32Mb.inc
 ;     libraries
 ;     ~~~~~~~~~
     includelib c:\MASM32\LIB\gdi32.lib
@@ -104,6 +100,24 @@
         imul ecx           ; estou multiplicando os dois(ecx*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
     ENDM
 
+    ;/* Coloca em EAX o valor multiplicado */
+    ;/* Altera ECX também                  */
+    multiplicar_d MACRO primeiro, segundo
+        mov eax, primeiro
+        movzx ecx, segundo
+        imul ecx           ; estou multiplicando os dois(ecx*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
+    ENDM
+
+    ;/* Coloca em DX o valor multiplicado */
+    ;/* Altera CX e AX também             */
+    aleatorio MACRO intervalo
+        mov  ax, dx
+        xor  dx, dx
+        mov  cx, 1
+        add  cx, intervalo
+        div  cx       ; here dx contains the remainder of the division - from 0 to intervalo
+    ENDM
+
     ;/////////////////////////////////
     ;/////////////////////////////////
     ;/////////////////////////////////
@@ -148,6 +162,25 @@
         invoke SelectObject,hDC, hfont
     ENDM
 
+    ESCREVE_PONTUACAO MACRO FontName, hDC, hfont, number, x, y
+        invoke CreateFont,24,16,0,0,400,0,0,0,OEM_CHARSET,\
+               OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,\
+               DEFAULT_QUALITY,DEFAULT_PITCH or FF_SCRIPT,\
+               ADDR FontName
+        invoke SelectObject, hDC, eax
+        mov    hfont,eax
+
+        mov bl, number
+        intToStr number
+        RGB    0,255,0
+        invoke SetTextColor,hDC,eax
+        RGB    0,0,0
+        invoke SetBkColor,hDC,eax
+        invoke TextOut,hDC,x,y,ADDR number,SIZEOF number
+        invoke SelectObject,hDC, hfont
+        mov number, bl
+    ENDM
+
     ;/////////////////////////////////
     ;/////////////////////////////////
     ;/////////////////////////////////
@@ -178,6 +211,13 @@
         EXITM <OFFSET rvstring>
     ENDM
 
+    intToStr MACRO valor
+        ;pegar a variavel(suponto Dword 2 bytes)
+        mov ah, valor
+        add ah, '0'
+        mov valor, ah
+    ENDM
+
     ;/////////////////////////////////
     ;/////////////////////////////////
     ;/////////////////////////////////
@@ -206,7 +246,10 @@
         canoBy        SDWORD 0
 
         indiceProX    dd 1
-        pontos        dd 0
+        pontos        db 0,0
+        pontos2       db 0,0
+        pontos3       db 0,0
+        random        dd 1
         ExitCode      dd 0
         hThread       dd 0
         hEventStart   dd 0
