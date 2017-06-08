@@ -88,6 +88,18 @@
         idiv ecx
     ENDM
 
+    dividir_oito MACRO primeiro, segundo
+        mov ah, primeiro
+        mov al, segundo
+        mov bx, 0
+        @loop:
+            .if ah <= al
+                jmp @fim
+            sub ah, al
+            inc bx
+        @fim:        
+    ENDM
+
     ;/////////////////////////////////
     ;/////////////////////////////////
     ;/////////////////////////////////
@@ -103,19 +115,23 @@
     ;/* Coloca em EAX o valor multiplicado */
     ;/* Altera ECX também                  */
     multiplicar_d MACRO primeiro, segundo
-        mov eax, primeiro
-        movzx ecx, segundo
-        imul ecx           ; estou multiplicando os dois(ecx*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
+        mov al, primeiro
+        mov ah, segundo
+        imul al           ; estou multiplicando os dois(ecx*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
     ENDM
 
     ;/* Coloca em DX o valor multiplicado */
     ;/* Altera CX e AX também             */
-    aleatorio MACRO intervalo
-        mov  ax, dx
-        xor  dx, dx
-        mov  cx, 1
-        add  cx, intervalo
-        div  cx       ; here dx contains the remainder of the division - from 0 to intervalo
+    aleatorio MACRO intervalo, resultado
+        mov  ah, dh
+        xor  dh, dh
+        mov  ch, 1
+        add  ch, intervalo
+        div  ch       ; here dh contains the remainder of the division - from 0 to intervalo
+        mov word ptr[resultado], dx
+        .while resultado > intervalo
+            sub resultado, intervalo+1
+        .endw
     ENDM
 
     ;/////////////////////////////////
@@ -163,6 +179,25 @@
     ENDM
 
     ESCREVE_PONTUACAO MACRO FontName, hDC, hfont, number, x, y
+        invoke CreateFont,24,16,0,0,400,0,0,0,OEM_CHARSET,\
+               OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,\
+               DEFAULT_QUALITY,DEFAULT_PITCH or FF_SCRIPT,\
+               ADDR FontName
+        invoke SelectObject, hDC, eax
+        mov    hfont,eax
+
+        mov bl, number
+        intToStr number
+        RGB    0,255,0
+        invoke SetTextColor,hDC,eax
+        RGB    0,0,0
+        invoke SetBkColor,hDC,eax
+        invoke TextOut,hDC,x,y,ADDR number,SIZEOF number
+        invoke SelectObject,hDC, hfont
+        mov number, bl
+    ENDM
+
+    ESCREVE_PONTUACAO_D MACRO FontName, hDC, hfont, number, x, y
         invoke CreateFont,24,16,0,0,400,0,0,0,OEM_CHARSET,\
                OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,\
                DEFAULT_QUALITY,DEFAULT_PITCH or FF_SCRIPT,\
@@ -233,35 +268,41 @@
         hIcon         dd 0
         hBmp          dd 0
         hFlappy       dd 0
+        hFlappy2      dd 0
         hCanoC        dd 0
         hCanoB        dd 0
         hFundo        dd 0
         szDisplayName db "Flappy Bird",0
 
+        contagemAsa   DWORD 0
         posx          SDWORD 0
         posy          SDWORD 0
         canoCx        SDWORD 0
         canoCy        SDWORD 0
         canoBx        SDWORD 0
         canoBy        SDWORD 0
+        DcanoCy       SDWORD 200
+        DcanoBy       SDWORD -350
 
         indiceProX    dd 1
         pontos        db 0,0
         pontos2       db 0,0
         pontos3       db 0,0
-        random        dd 1
+        random        db 1,0
+        somaRandom    dd 0
+        randomOrdem   dd 0
         ExitCode      dd 0
         hThread       dd 0
         hEventStart   dd 0
         EventStop     BOOL FALSE
         perdeu        db 0,0
-        textoPerdeu   db " Acabou, clique em 'Jogar'",0
-        textoPerdeu2  db "      para recomecar",0
+        textoPerdeu   db " ACABOU, PRESSIONE [c]",0
+        textoPerdeu2  db "    PARA RECOMECAR",0
         textoPerdeu3  db "Pontos: ",0
         inicio        db 1,0
         vai           db 0,0
-        textoInicio   db " Pressione a tecla [b] para",0
-        textoInicio2  db "    iniciar sua aventura",0
+        textoInicio   db " PRESSIONE A TECLA [b] PARA",0
+        textoInicio2  db "    INICIAR SUA AVENTURA",0
         FontName      db "Consolas",0
 
     .const
@@ -273,6 +314,7 @@
         FLAPPY_ALTURA  DWORD 30
         FLAPPY_LARGURA DWORD 59
         FLAPPY_BITMAP equ 200
+        FLAPPY2_BITMAP equ 210
 
         CANO_ALTURA  DWORD 450
         CANO_LARGURA DWORD 50

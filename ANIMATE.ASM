@@ -44,6 +44,9 @@ start:
     invoke  LoadBitmap, hInstance, FLAPPY_BITMAP
     mov     hFlappy, eax
 
+    invoke  LoadBitmap, hInstance, FLAPPY2_BITMAP
+    mov     hFlappy2, eax
+
     invoke  LoadBitmap, hInstance, FUNDO_BITMAP
     mov     hFundo, eax
 
@@ -177,7 +180,7 @@ WndProc proc hWin   :DWORD,
     .elseif uMsg == WM_CHAR
         push wParam
         pop  char
-        .if char == 97 || char == 65 ; se apertou "a" ou  "A"
+        .if char == 32 || char == 32 ; se apertou "a" ou  "A"
             call subir
         .elseif char == 99 || char == 67 ; se apertou "c" ou  "C"
             .if perdeu == 1
@@ -239,6 +242,25 @@ TopXY endp
 voltaCanos proc
     mov canoCx, -506
     mov canoBx, -506
+    inc randomOrdem
+    mov somaRandom, 0
+
+    aleatorio 190, random
+    xor eax, eax
+    mov eax, dword ptr[random]
+    .if randomOrdem > 1
+        multiplicar eax, 6
+        mov randomOrdem, 0
+    .endif
+    add somaRandom, eax
+
+    mov ebx, DcanoBy
+    mov canoBy, ebx
+    add canoBy, eax
+    mov ebx, DcanoCy
+    mov canoCy, ebx
+    add canoCy, eax
+
     inc pontos
     .if pontos > 9
         mov pontos, 0
@@ -254,8 +276,6 @@ voltaCanos proc
             .endif
         .endif
     .endif
-    ;aleatorio 10
-    ;mov random, dx
     ret
 voltaCanos ENDP
 
@@ -280,6 +300,10 @@ calculaPos proc
         .if eax == 1               ; se não colidiu no canto
             call irDescendo        ; descer o flappy
             call canoAndar         ; andamos o cano para sensação de movimento
+            inc contagemAsa
+            .if contagemAsa > 10
+                mov contagemAsa, 0
+            .endif
             mov eax, CANO_LARGURA  ; movemos a constante para o eax para utilizar no IF
             .if canoCx > eax       ; se o cano chegou no final
                 call voltaCanos    ; voltamos ele com a aleatoriedade
@@ -444,9 +468,15 @@ desenharFlappy proc hDC:DWORD
         ESCREVE_TEXTO FontName, hDC, hfont, textoInicio, 0, 130
         ESCREVE_TEXTO FontName, hDC, hfont, textoInicio2, 0, 160
     .else
-        invoke SelectObject,memDC,hFlappy
-        mov hFImage, eax
-        invoke BitBlt,hDC,0,0,500,478,memDC,posx,posy,SRCCOPY
+        .if contagemAsa > 5
+            invoke SelectObject,memDC,hFlappy
+            mov hFImage, eax
+            invoke BitBlt,hDC,0,0,500,478,memDC,posx,posy,SRCCOPY
+        .else
+            invoke SelectObject,memDC,hFlappy2
+            mov hFImage, eax
+            invoke BitBlt,hDC,0,0,500,478,memDC,posx,posy,SRCCOPY
+        .endif
 
         invoke SelectObject,memDC,hCanoB
         mov hFImage, eax
@@ -459,6 +489,7 @@ desenharFlappy proc hDC:DWORD
         ESCREVE_PONTUACAO FontName, hDC, hfont, pontos3, 0, 0
         ESCREVE_PONTUACAO FontName, hDC, hfont, pontos2, 20, 0
         ESCREVE_PONTUACAO FontName, hDC, hfont, pontos, 40, 0
+        ESCREVE_PONTUACAO_D FontName, hDC, hfont, random, 60, 0
     .endif
 
 
