@@ -251,6 +251,9 @@ voltaCanos proc
     .if randomOrdem > 1
         multiplicar eax, 6
         mov randomOrdem, 0
+        .if velocidade < 8
+            inc velocidade
+        .endif
     .endif
     add somaRandom, eax
 
@@ -285,8 +288,9 @@ voltaCanos ENDP
 
 ;  F    |<
 canoAndar proc
-    add canoCx, 4
-    add canoBx, 4
+    mov eax, velocidade
+    add canoCx, eax
+    add canoBx, eax
     ret
 canoAndar endp
 
@@ -300,10 +304,6 @@ calculaPos proc
         .if eax == 1               ; se não colidiu no canto
             call irDescendo        ; descer o flappy
             call canoAndar         ; andamos o cano para sensação de movimento
-            inc contagemAsa
-            .if contagemAsa > 10
-                mov contagemAsa, 0
-            .endif
             mov eax, CANO_LARGURA  ; movemos a constante para o eax para utilizar no IF
             .if canoCx > eax       ; se o cano chegou no final
                 call voltaCanos    ; voltamos ele com a aleatoriedade
@@ -378,6 +378,7 @@ podeIrPraPos endp
 subir proc
     .if posy < 0 ; para não sair da tela
         mov indiceProX, 15
+        mov contagemAsa, 0
     .endif
 subir endp
 
@@ -387,13 +388,13 @@ subir endp
 
 irDescendo proc
     call graficoDeY       ; EAX agora tem o valor de quanto descer ou subir
+    .if SDWORD ptr eax > 0
+        mov contagemAsa, 0
+    .else
+        mov contagemAsa, 6
+    .endif
     .if posy > -500
         add posy, SDWORD ptr eax    ; adicionando o valor do Y(-/+) pelo valor de EAX
-        ;mov eax, posx
-        ;mov bx, random
-        ;movzx ecx, bx
-        ;imul ecx           ; estou multiplicando os dois(ecx*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
-        ;mov posx, eax
     .endif
     add indiceProX, 1     ; andando com o índice para a próxima posição da função quadrática
 irDescendo endp
@@ -469,11 +470,11 @@ desenharFlappy proc hDC:DWORD
         ESCREVE_TEXTO FontName, hDC, hfont, textoInicio2, 0, 160
     .else
         .if contagemAsa > 5
-            invoke SelectObject,memDC,hFlappy
+            invoke SelectObject,memDC,hFlappy2
             mov hFImage, eax
             invoke BitBlt,hDC,0,0,500,478,memDC,posx,posy,SRCCOPY
         .else
-            invoke SelectObject,memDC,hFlappy2
+            invoke SelectObject,memDC,hFlappy
             mov hFImage, eax
             invoke BitBlt,hDC,0,0,500,478,memDC,posx,posy,SRCCOPY
         .endif

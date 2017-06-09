@@ -301,6 +301,7 @@
         textoPerdeu3  db "Pontos: ",0
         inicio        db 1,0
         vai           db 0,0
+        velocidade    dd 4
         textoInicio   db " PRESSIONE A TECLA [b] PARA",0
         textoInicio2  db "    INICIAR SUA AVENTURA",0
         FontName      db "Consolas",0
