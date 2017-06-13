@@ -10,6 +10,7 @@
     include c:\MASM32\INCLUDE\Comctl32.inc
     include c:\MASM32\INCLUDE\comdlg32.inc
     include c:\MASM32\INCLUDE\shell32.inc
+    include C:\MASM32\INCLUDE\Msimg32.inc
 ;     libraries
 ;     ~~~~~~~~~
     includelib c:\MASM32\LIB\gdi32.lib
@@ -19,6 +20,7 @@
     includelib c:\MASM32\LIB\comdlg32.lib
     includelib c:\MASM32\LIB\shell32.lib
     includelib c:\MASM32\LIB\advapi32.lib
+    includelib C:\MASM32\LIB\Msimg32.lib
 
 ; #########################################################################
 
@@ -77,10 +79,7 @@
     ;/////////////////////////////////
     ;/////////////////////////////////
 
-    ;/////////////////////////////////
-    ;/////////////////////////////////
-    ;/////////////////////////////////
-
+    ; /* método divide registradores de 16 bits, para DWords */
     dividir MACRO primeiro, segundo
         mov eax, primeiro
         mov ecx, segundo
@@ -88,6 +87,7 @@
         idiv ecx
     ENDM
 
+    ; /* método divide registradores de 8 bits, para DBytes */
     dividir_oito MACRO primeiro, segundo
         mov ah, primeiro
         mov al, segundo
@@ -104,24 +104,20 @@
     ;/////////////////////////////////
     ;/////////////////////////////////
 
-    ;/* Coloca em EAX o valor multiplicado */
-    ;/* Altera ECX também                  */
+    ; /* Coloca em EAX o valor multiplicado */
+    ; /* Altera ECX também                  */
     multiplicar MACRO primeiro, segundo
         mov ecx, primeiro
         mov eax, segundo
         imul ecx           ; estou multiplicando os dois(ecx*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
     ENDM
 
-    ;/* Coloca em EAX o valor multiplicado */
-    ;/* Altera ECX também                  */
-    multiplicar_d MACRO primeiro, segundo
-        mov al, primeiro
-        mov ah, segundo
-        imul al           ; estou multiplicando os dois(ecx*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
-    ENDM
+    ;/////////////////////////////////
+    ;/////////////////////////////////
+    ;/////////////////////////////////
 
-    ;/* Coloca em DX o valor multiplicado */
-    ;/* Altera CX e AX também             */
+    ; /* Coloca em DX o valor multiplicado */
+    ; /* Altera CX e AX também             */
     aleatorio MACRO intervalo, resultado
         mov  ah, dh
         xor  dh, dh
@@ -138,7 +134,7 @@
     ;/////////////////////////////////
     ;/////////////////////////////////
 
-    ;/* Coloca em EAX o valor do quadrado */
+    ; /* Coloca em EAX o valor do quadrado */
     quadradoDe MACRO base
         mov eax, base   ; colocando o valor de 'base' em EAX
         imul eax         ; estou multiplicando o valor por si mesmo(EAX*EAX), será guardado em EAX o valor(e em EDX se muito grande) por default
@@ -148,7 +144,7 @@
     ;/////////////////////////////////
     ;/////////////////////////////////
 
-    ;/* Coloca em EAX o valor do RGB desejado */
+    ; /* Coloca em EAX o valor do RGB desejado */
     RGB MACRO red,green,blue 
         xor eax,eax 
         mov ah,blue 
@@ -157,28 +153,41 @@
         mov al,red 
     ENDM
 
+    RGB_b MACRO red,green,blue 
+        xor ebx,ebx 
+        mov bh,blue 
+        shl ebx,8 
+        mov bh,green 
+        mov bl,red 
+    ENDM
+
     ;/////////////////////////////////
     ;/////////////////////////////////
     ;/////////////////////////////////
 
     ; /* Macro para escrever um texto baseando-se no contexto(hDC) e as coordenadas */
     ESCREVE_TEXTO MACRO FontName, hDC, hfont, texto, x, y
-        invoke CreateFont,24,16,0,0,400,0,0,0,OEM_CHARSET,\
+        invoke CreateFont,24,16,0,0,400,0,0,0,OEM_CHARSET,\ ;// cria a fonte
                OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,\
                DEFAULT_QUALITY,DEFAULT_PITCH or FF_SCRIPT,\
                ADDR FontName
-        invoke SelectObject, hDC, eax
-        mov    hfont,eax
+        invoke SelectObject, hDC, eax ;// coloca a fonte em hDC
+        mov    hfont,eax  ;// obtemos a fonte
 
-        RGB    200,200,50
-        invoke SetTextColor,hDC,eax
-        RGB    0,160,192
-        invoke SetBkColor,hDC,eax
-        invoke TextOut,hDC,x,y,ADDR texto,SIZEOF texto
-        invoke SelectObject,hDC, hfont
+        RGB    200,200,50 ;// setamos em eax a cor desejada
+        invoke SetTextColor,hDC,eax ;// colocamos a cor no hDC para texto
+        RGB    0,160,192 ;// setamos em eax a cor desejada
+        invoke SetBkColor,hDC,eax ;// colocamos a cor no hDC para background
+        invoke TextOut,hDC,x,y,ADDR texto,SIZEOF texto ;// escrevemos o texto na tela
+        invoke SelectObject,hDC, hfont                 ;// juntamente com a fonte escolhida
     ENDM
 
-    ESCREVE_PONTUACAO MACRO FontName, hDC, hfont, number, x, y
+    ;/////////////////////////////////
+    ;/////////////////////////////////
+    ;/////////////////////////////////
+
+    ; /* Função que escreve um número(DByte) na tela, com um background padrão de números */
+    ESCREVE_PONTUACAO MACRO FontName, hDC, hfont, number, x, y, planodefundo
         invoke CreateFont,24,16,0,0,400,0,0,0,OEM_CHARSET,\
                OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,\
                DEFAULT_QUALITY,DEFAULT_PITCH or FF_SCRIPT,\
@@ -188,15 +197,27 @@
 
         mov bl, number
         intToStr number
-        RGB    0,255,0
-        invoke SetTextColor,hDC,eax
-        RGB    0,0,0
-        invoke SetBkColor,hDC,eax
+        .if planodefundo == 0
+            RGB    0,255,0
+            invoke SetTextColor,hDC,eax
+            RGB    0,0,0
+            invoke SetBkColor,hDC,eax
+        .else
+            RGB    200,200,50 ;// setamos em eax a cor desejada
+            invoke SetTextColor,hDC,eax ;// colocamos a cor no hDC para texto
+            RGB    0,160,192 ;// setamos em eax a cor desejada
+            invoke SetBkColor,hDC,eax ;// colocamos a cor no hDC para background
+        .endif
         invoke TextOut,hDC,x,y,ADDR number,SIZEOF number
         invoke SelectObject,hDC, hfont
         mov number, bl
     ENDM
 
+    ;/////////////////////////////////
+    ;/////////////////////////////////
+    ;/////////////////////////////////
+
+    ; /* Função que escreve um número(DWord) na tela, com um background padrão de números */
     ESCREVE_PONTUACAO_D MACRO FontName, hDC, hfont, number, x, y
         invoke CreateFont,24,16,0,0,400,0,0,0,OEM_CHARSET,\
                OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,\
@@ -220,7 +241,7 @@
     ;/////////////////////////////////
     ;/////////////////////////////////
 
-    ;/* Macro para criar Threads, baseando-se no ID e no Handler */
+    ; /* Macro para criar Threads, baseando-se no ID, no Handler e no procedimento dela */
     CRIAR_THREAD MACRO ThreadProc, ThreadID, hThread
         mov    eax, OFFSET ThreadProc
         invoke CreateEvent, NULL, FALSE, FALSE, NULL
@@ -235,19 +256,8 @@
     ;/////////////////////////////////
     ;/////////////////////////////////
 
-    sstr$ MACRO DDvalue   ;; signed integer from string
-        LOCAL rvstring
-        .data
-            rvstring db 20 dup (0)
-        align 4
-        .code
-        invoke dwtoa,DDvalue,ADDR rvstring
-        ;; invoke ltoa,DDvalue,ADDR rvstring
-        EXITM <OFFSET rvstring>
-    ENDM
-
+    ; /* transforma uma variável numérica(entre 0-9) e transforma em letra('0'-'9')(suponto DByte 1 bytes) */
     intToStr MACRO valor
-        ;pegar a variavel(suponto Dword 2 bytes)
         mov ah, valor
         add ah, '0'
         mov valor, ah
@@ -258,7 +268,7 @@
     ;/////////////////////////////////
 
     .data?
-    ranNum DWORD ?
+        ranNum DWORD ?
 
     .data
         CommandLine   dd 0
@@ -267,25 +277,27 @@
         hInstance     dd 0
         hIcon         dd 0
         hBmp          dd 0
-        hFlappy       dd 0
-        hFlappy2      dd 0
-        hCanoC        dd 0
-        hCanoB        dd 0
-        hFundo        dd 0
+        hFlappy       dd 0 ; Handler para bitmap do flappy com asa para baixo
+        hFlappy2      dd 0 ; Handler para o bitmap do flappy com a asa para cima
+        hCanoC        dd 0 ; Handler para o Bitmap representativo do cano de cima
+        hCanoB        dd 0 ; Handler para o Bitmap representativo do cano de baixo
+        hFundo        dd 0 ; Handler para o bitmap do fundo azul
         szDisplayName db "Flappy Bird",0
 
-        contagemAsa   DWORD 0
-        posx          SDWORD 0
-        posy          SDWORD 0
-        canoCx        SDWORD 0
-        canoCy        SDWORD 0
-        canoBx        SDWORD 0
-        canoBy        SDWORD 0
-        DcanoCy       SDWORD 200
+        contagemAsa   DWORD 0  ; variável que determina qual bitmap do pássaro será desenhado na tela
+        posx          SDWORD 0 ; posição x do flappy no cálculo(negativa)
+        posy          SDWORD 0 ; posição y do flappy no cálculo(negativa)
+        posxA         SDWORD 0 ; posição x do flappy na tela(negativa)
+        posyA         SDWORD 0 ; posição y do flappy na tela(negativa)
+        canoCx        SDWORD 0 ; posição x do cano de cima na tela(negativa ou  positiva)
+        canoCy        SDWORD 0 ; posição y do cano de cima na tela(negativa ou  positiva)
+        canoBx        SDWORD 0 ; posição x do cano de baixo na tela(negativa ou  positiva)
+        canoBy        SDWORD 0 ; posição y do cano de baixo na tela(negativa ou  positiva)
+        DcanoCy       SDWORD 200  ; posição default das alturas dos canos
         DcanoBy       SDWORD -350
 
-        indiceProX    dd 1
-        pontos        db 0,0
+        indiceProX    dd 1 ; indice para a função utilizada no cálculo da posição do flappy
+        pontos        db 0,0 ; variável que guarda os pontos feitos pelo usuário
         pontos2       db 0,0
         pontos3       db 0,0
         random        db 1,0

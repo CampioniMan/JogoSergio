@@ -394,6 +394,8 @@ irDescendo proc
         mov contagemAsa, 6
     .endif
     .if posy > -500
+        mov ebx, posy
+        mov posyA, ebx
         add posy, SDWORD ptr eax    ; adicionando o valor do Y(-/+) pelo valor de EAX
     .endif
     add indiceProX, 1     ; andando com o índice para a próxima posição da função quadrática
@@ -427,6 +429,8 @@ graficoDeY endp
 recomecar proc
     mov posx, -10
     mov posy, -100
+    mov posxA, -10
+    mov posyA, -100
     mov canoCx, -300
     mov canoBx, -300
     mov canoCy, 200
@@ -434,6 +438,7 @@ recomecar proc
     mov pontos, 0
     mov pontos2, 0
     mov pontos3, 0
+    mov velocidade, 4
 
     mov indiceProX, 30
 
@@ -462,9 +467,9 @@ desenharFlappy proc hDC:DWORD
         ESCREVE_TEXTO FontName, hDC, hfont, textoPerdeu, 0, 130
         ESCREVE_TEXTO FontName, hDC, hfont, textoPerdeu2, 0, 160
         ESCREVE_TEXTO FontName, hDC, hfont, textoPerdeu3, 50, 210
-        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos3, 170, 210
-        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos2, 190, 210
-        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos, 210, 210
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos3, 170, 210, perdeu
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos2, 190, 210, perdeu
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos, 210, 210, perdeu
     .elseif inicio == 1
         ESCREVE_TEXTO FontName, hDC, hfont, textoInicio, 0, 130
         ESCREVE_TEXTO FontName, hDC, hfont, textoInicio2, 0, 160
@@ -472,11 +477,11 @@ desenharFlappy proc hDC:DWORD
         .if contagemAsa > 5
             invoke SelectObject,memDC,hFlappy2
             mov hFImage, eax
-            invoke BitBlt,hDC,0,0,500,478,memDC,posx,posy,SRCCOPY
+            invoke BitBlt,hDC,0,0,500,478,memDC,posx,posyA,SRCCOPY
         .else
             invoke SelectObject,memDC,hFlappy
             mov hFImage, eax
-            invoke BitBlt,hDC,0,0,500,478,memDC,posx,posy,SRCCOPY
+            invoke BitBlt,hDC,0,0,500,478,memDC,posx,posyA,SRCCOPY
         .endif
 
         invoke SelectObject,memDC,hCanoB
@@ -487,10 +492,10 @@ desenharFlappy proc hDC:DWORD
         mov hFImage, eax
         invoke BitBlt,hDC,0,0,500,478,memDC,canoCx,canoCy,SRCCOPY
 
-        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos3, 0, 0
-        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos2, 20, 0
-        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos, 40, 0
-        ESCREVE_PONTUACAO_D FontName, hDC, hfont, random, 60, 0
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos3, 0, 0, perdeu
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos2, 20, 0, perdeu
+        ESCREVE_PONTUACAO FontName, hDC, hfont, pontos, 40, 0, perdeu
+        ;ESCREVE_PONTUACAO_D FontName, hDC, hfont, random, 60, 0
     .endif
 
 
